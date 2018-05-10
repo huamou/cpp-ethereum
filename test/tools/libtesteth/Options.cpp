@@ -23,8 +23,8 @@
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/fuzzTesting/fuzzHelper.h>
 #include <boost/program_options.hpp>
-#include "boost/iostreams/stream.hpp"
-#include "boost/iostreams/device/null.hpp"
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/null.hpp>
 
 using namespace std;
 using namespace dev::test;
@@ -82,20 +82,17 @@ void Options::setVerbosity(int _level)
 {
     static boost::iostreams::stream< boost::iostreams::null_sink > nullOstream( ( boost::iostreams::null_sink() ) );
     static dev::LoggingOptions logOptions;
-    if (_level > verbosity)
+    verbosity = _level;
+    logOptions.verbosity = verbosity;
+    if (_level <= 0)
     {
-        verbosity = _level;
-        logOptions.verbosity = verbosity;
-        if (_level <= 0)
-        {
-            logOptions.verbosity = -1;
-            std::cout.rdbuf(nullOstream.rdbuf());
-            std::cerr.rdbuf(nullOstream.rdbuf());
-        }
-        else if (_level == 1 || _level == 2)
-            logOptions.verbosity = -1;
-        dev::setupLogging(logOptions);
+        logOptions.verbosity = -1;
+        std::cout.rdbuf(nullOstream.rdbuf());
+        std::cerr.rdbuf(nullOstream.rdbuf());
     }
+    else if (_level == 1 || _level == 2)
+        logOptions.verbosity = -1;
+    dev::setupLogging(logOptions);
 }
 
 Options::Options(int argc, const char** argv)
@@ -169,7 +166,7 @@ Options::Options(int argc, const char** argv)
         {
 #if ETH_VMTRACE
             vmtrace = true;
-            setVerbosity(13);
+            verbosity = std::max(verbosity, 13);
 #else
             cerr << "--vmtrace option requires a build with cmake -DVMTRACE=1\n";
             exit(1);
@@ -231,7 +228,7 @@ Options::Options(int argc, const char** argv)
         else if (arg == "--verbosity")
         {
             throwIfNoArgumentFollows();
-            setVerbosity(atoi(argv[++i]));
+            verbosity = std::max(verbosity, atoi(argv[++i]));
         }
         else if (arg == "--options")
         {
@@ -274,7 +271,7 @@ Options::Options(int argc, const char** argv)
         else if (arg == "--statediff")
         {
             statediff = true;
-            setVerbosity(5);
+            verbosity = std::max(verbosity, 5);
         }
         else if (arg == "--randomcode")
         {
@@ -345,7 +342,7 @@ Options::Options(int argc, const char** argv)
     }
 
     // If no verbosity is set. use default
-    setVerbosity(1);
+    setVerbosity(verbosity == -1 ? 1 : verbosity);
 }
 
 Options const& Options::get(int argc, const char** argv)
